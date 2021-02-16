@@ -1,17 +1,15 @@
-import 'dotenv/config';
-
-//Keystone
 import { createAuth } from '@keystone-next/auth';
 import { config, createSchema } from '@keystone-next/keystone/schema';
 import {
-  withItemData,
   statelessSessions,
+  withItemData,
 } from '@keystone-next/keystone/session';
-
-// Schemas
-import { User } from './schemas/User';
+import 'dotenv/config';
+import { sendPasswordResetEmail } from './lib/mail';
+import { CartItem } from './schemas/CartItem';
 import { Product } from './schemas/Product';
 import { ProductImage } from './schemas/ProductImage';
+import { User } from './schemas/User';
 import { insertSeedData } from './seed-data';
 
 const databaseURL =
@@ -29,6 +27,11 @@ const { withAuth } = createAuth({
   initFirstItem: {
     fields: ['name', 'email', 'password'],
     // TODO: Add in inital roles here
+  },
+  passwordResetLink: {
+    async sendToken(args) {
+      await sendPasswordResetEmail(args.token, args.identity);
+    },
   },
 });
 
@@ -55,6 +58,7 @@ export default withAuth(
       User,
       Product,
       ProductImage,
+      CartItem,
     }),
     ui: {
       // Show the UI only for poeple who pass this test
