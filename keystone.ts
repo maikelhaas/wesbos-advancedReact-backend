@@ -1,19 +1,20 @@
 import { createAuth } from '@keystone-next/auth';
 import { config, createSchema } from '@keystone-next/keystone/schema';
-import {
-  statelessSessions,
-  withItemData,
-} from '@keystone-next/keystone/session';
+import { statelessSessions, withItemData } from '@keystone-next/keystone/session';
 import 'dotenv/config';
 import { sendPasswordResetEmail } from './lib/mail';
+import { extendGraphqlSchema } from './mutations';
 import { CartItem } from './schemas/CartItem';
+import { permissionsList } from './schemas/fields';
+import { Order } from './schemas/Order';
+import { OrderItem } from './schemas/OrderItem';
 import { Product } from './schemas/Product';
 import { ProductImage } from './schemas/ProductImage';
+import { Role } from './schemas/Role';
 import { User } from './schemas/User';
 import { insertSeedData } from './seed-data';
 
-const databaseURL =
-  process.env.DATABASE_URL || 'mongodb://localhost/keystone-sick-fits-tutorial';
+const databaseURL = process.env.DATABASE_URL || 'mongodb://localhost/keystone-sick-fits-tutorial';
 
 const sessionConfig = {
   maxAge: 60 * 60 * 24 * 360, // Long should they stay signed in
@@ -24,9 +25,10 @@ const { withAuth } = createAuth({
   listKey: 'User',
   identityField: 'email',
   secretField: 'password',
+  // If there are no users, let the user create one
   initFirstItem: {
     fields: ['name', 'email', 'password'],
-    // TODO: Add in inital roles here
+    // TODO: Add in initial roles here
   },
   passwordResetLink: {
     async sendToken(args) {
@@ -51,7 +53,6 @@ export default withAuth(
           await insertSeedData(keystone);
         }
       },
-      // TODO: Add data seeding here
     },
     lists: createSchema({
       // Schema items go in here
@@ -59,6 +60,9 @@ export default withAuth(
       Product,
       ProductImage,
       CartItem,
+      OrderItem,
+      Order,
+      Role,
     }),
     ui: {
       // Show the UI only for poeple who pass this test
@@ -69,7 +73,9 @@ export default withAuth(
     },
     session: withItemData(statelessSessions(sessionConfig), {
       // GraphQL Query
-      User: 'id name email',
+      User: `id name email role { ${permissionsList.join(' ')} }`,
     }),
+    // Custom mutations:
+    extendGraphqlSchema: extendGraphqlSchema,
   })
 );
